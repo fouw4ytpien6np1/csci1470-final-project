@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from stock_model import StockModel
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 
 def batch_data(data, batch_size=1):
@@ -52,7 +53,7 @@ def test(model, x_test, y_test, scaler):
     :param x_test: the x test data
     :param y_test: the y test data
     :param scaler: the scaler uses to normalize the data
-    :return: precision, recall, accuracy, f_measure
+    :return: precision, recall, accuracy, f_measure, correct_test_predictions
     """
 
     # make predictions from trained model:
@@ -77,7 +78,17 @@ def test(model, x_test, y_test, scaler):
     # calculate f_measure
     f_measure = 2 * precision * recall / (precision + recall)
 
-    return precision, recall, accuracy, f_measure
+    return precision, recall, accuracy, f_measure, correct_test_predictions
+
+
+def visualize_results(real_stock_price, predicted_stock_price):
+    plt.plot(real_stock_price, color='black', label='Stock Price')
+    plt.plot(predicted_stock_price, color='green', label='Predicted Stock Price')
+    plt.title('Stock Price Prediction')
+    plt.xlabel('Time')
+    plt.ylabel('Stock Price')
+    plt.legend()
+    plt.show()
 
 
 def main():
@@ -125,7 +136,7 @@ def main():
     for epoch in range(NUM_EPOCHS):
         train(model, x_train, x_test, scaler)
 
-    precision, recall, accuracy, f_measure = test(model, x_test, y_test, scaler)
+    precision, recall, accuracy, f_measure, predictions = test(model, x_test, y_test, scaler)
 
     print("###MODEL RESULTS###")
     print("-------------------")
@@ -138,6 +149,8 @@ def main():
     print("F-Measure: " + str(f_measure))
     print("-------------------")
     print("###END OF RESULTS###")
+
+    visualize_results(y_test, predictions)
 
 
 if __name__ == '__main__':
