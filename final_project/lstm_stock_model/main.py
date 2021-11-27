@@ -17,10 +17,17 @@ def batch_data(data, batch_size=1):
 
     dataX, dataY = [], []
 
-    for i in range(len(data) - batch_size - 1):
-        a = data[i:(i + batch_size), 0]
-        dataX.append(a)
-        dataY.append(data[i + batch_size, 0])
+    overall_length = len(data)
+
+    for i in range(0, overall_length):
+        if overall_length - i < batch_size:
+            continue
+        x = data[i: i + batch_size]
+        y = data[i + 1: i + 1 + batch_size]
+
+        if len(x) == 100 and len(y) == 100:
+            dataX.append(x)
+            dataY.append(y)
 
     return np.array(dataX), np.array(dataY)
 
@@ -37,6 +44,8 @@ def train(model, x_train, y_train):
 
     """
     for i in range(len(x_train)):
+        if i == 0:
+            continue
         with tf.GradientTape() as tape:
             predictions = model.call(x_train[i])
             predictions = tf.reshape(predictions, shape=(model.batch_size, 1))
@@ -53,34 +62,49 @@ def test(model, x_test, y_test, scaler):
     :param x_test: the x test data
     :param y_test: the y test data
     :param scaler: the scaler uses to normalize the data
-    :return: precision, recall, accuracy, f_measure, correct_test_predictions
+    :return: avg_precision, avg_recall, avg_accuracy, avg_f_measure, correct_test_predictions
     """
+    correct_predictions = []
+    precisions = []
+    recalls = []
+    accuracies = []
+    f_measures = []
 
-    # make predictions from trained model:
-    test_predictions = model.call(x_test)
-    test_predictions = tf.reshape(test_predictions, shape=(len(y_test), 1))
-    correct_test_predictions = scaler.inverse_transform(test_predictions)
-    y_test = scaler.inverse_transform(y_test)
+    for i in range(len(x_test)):
 
-    # calculate precision:
-    precision_metric = tf.keras.metrics.Precision()
-    precision_metric.update_state(correct_test_predictions, y_test)
-    precision = precision_metric.result().numpy()
+        # make predictions from trained model:
+        test_predictions = model.call(x_test[i])
 
-    # calculate recall:
-    recall_metric = tf.keras.metrics.Recall()
-    recall_metric.update_state(correct_test_predictions, y_test)
-    recall = recall_metric.result().numpy()
+        test_predictions = tf.reshape(test_predictions, shape=(model.batch_size, 1))
 
-    # calculate accuracy
-    accuracy_metric = tf.keras.metrics.Accuracy()
-    accuracy_metric.update_state(correct_test_predictions, y_test)
-    accuracy = accuracy_metric.result().numpy()
+        # add price prediction (as actual prices) to output list
+        correct_price_prediction = scaler.inverse_transform(test_predictions)
+        correct_predictions.append(correct_price_prediction[-1][0] / 2)
 
-    # calculate f_measure
-    f_measure = 2 * precision * recall / (precision + recall)
+        # calculate precision:
+        precision_metric = tf.keras.metrics.Precision()
+        precision_metric.update_state(test_predictions, y_test[i])
+        precision = precision_metric.result().numpy()
+        precisions.append(precision)
 
-    return precision, recall, accuracy, f_measure, correct_test_predictions
+        # calculate recall:
+        recall_metric = tf.keras.metrics.Recall()
+        recall_metric.update_state(test_predictions, y_test[i])
+        recall = recall_metric.result().numpy()
+        recalls.append(recall)
+
+        # calculate accuracy
+        accuracy_metric = tf.keras.metrics.Accuracy()
+        accuracy_metric.update_state(test_predictions, y_test[i])
+        accuracy = accuracy_metric.result().numpy()
+        accuracies.append(accuracy)
+
+        # calculate f_measure
+        f_measure = 2 * precision * recall / (precision + recall)
+        f_measures.append(f_measure)
+
+    return np.sum(precisions) / len(precisions), np.sum(recalls) / len(recalls), \
+           np.sum(accuracies) / len(accuracies), np.sum(f_measures) / len(accuracies), correct_predictions
 
 
 def visualize_results(real_stock_price, predicted_stock_price):
@@ -94,11 +118,13 @@ def visualize_results(real_stock_price, predicted_stock_price):
 
 
 def main():
-
     # PREPROCESS
 
     # get data from CSV:
     data = pd.read_csv('../../data/spx_prices.csv')
+
+    # reverse data
+    data = data.iloc[::-1]
 
     # reset the index of the dataframe:
     reset_data = data.reset_index()[' Close']
@@ -117,6 +143,7 @@ def main():
 
     # get our data by train and test:
     train_data, test_data = fit_data[0:training_size, :], fit_data[test_size:len(fit_data), :1]
+    test_data_without_scale = scaler.inverse_transform(test_data)
 
     # init our model:
     model = StockModel(batch_size=100)
@@ -138,25 +165,25 @@ def main():
     NUM_EPOCHS = 5
 
     for epoch in range(NUM_EPOCHS):
-        train(model, x_train, x_test)
+        train(model, x_train, y_test)
+        model.reset_states()
 
     precision, recall, accuracy, f_measure, predictions = test(model, x_test, y_test, scaler)
 
     print("###MODEL RESULTS###")
     print("-------------------")
-    print("Precision: " + str(precision))
+    print("Average Precision: " + str(precision))
     print("-------------------")
-    print("Recall: " + str(recall))
+    print("Average Recall: " + str(recall))
     print("-------------------")
-    print("Accuracy: " + str(accuracy))
+    print("Average Accuracy: " + str(accuracy))
     print("-------------------")
-    print("F-Measure: " + str(f_measure))
+    print("Average F-Measure: " + str(f_measure))
     print("-------------------")
     print("###END OF RESULTS###")
 
-    visualize_results(y_test, predictions)
+    visualize_results(test_data_without_scale, predictions)
 
 
 if __name__ == '__main__':
     main()
-
