@@ -58,6 +58,7 @@ def test(model, x_test, y_test, scaler):
 
     # make predictions from trained model:
     test_predictions = model.call(x_test)
+    test_predictions = tf.reshape(test_predictions, shape=(len(y_test), 1))
     correct_test_predictions = scaler.inverse_transform(test_predictions)
     y_test = scaler.inverse_transform(y_test)
 
@@ -97,7 +98,7 @@ def main():
     # PREPROCESS
 
     # get data from CSV:
-    data = pd.read_csv('../data/spx_prices.csv')
+    data = pd.read_csv('../../data/spx_prices.csv')
 
     # reset the index of the dataframe:
     reset_data = data.reset_index()[' Close']
