@@ -25,7 +25,7 @@ def batch_data(data, batch_size=1):
     return np.array(dataX), np.array(dataY)
 
 
-def train(model, x_train, y_train, scaler):
+def train(model, x_train, y_train):
     """
     trains the model for 1 epoch
 
@@ -39,8 +39,8 @@ def train(model, x_train, y_train, scaler):
     for i in range(len(x_train)):
         with tf.GradientTape() as tape:
             predictions = model.call(x_train[i])
-            correct_predictions = scaler.inverse_transform(predictions)
-            loss = model.loss(y_train[i], correct_predictions)
+            predictions = tf.reshape(predictions, shape=(model.batch_size, 1))
+            loss = model.loss(y_train[i], predictions)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
@@ -59,6 +59,7 @@ def test(model, x_test, y_test, scaler):
     # make predictions from trained model:
     test_predictions = model.call(x_test)
     correct_test_predictions = scaler.inverse_transform(test_predictions)
+    y_test = scaler.inverse_transform(y_test)
 
     # calculate precision:
     precision_metric = tf.keras.metrics.Precision()
@@ -99,7 +100,7 @@ def main():
     data = pd.read_csv('../data/spx_prices.csv')
 
     # reset the index of the dataframe:
-    reset_data = data.reset_index()['close']
+    reset_data = data.reset_index()[' Close']
 
     # LSTM sensitive to data scale, so normalize:
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -121,20 +122,22 @@ def main():
 
     # batch the train data:
     x_train, y_train = batch_data(train_data, model.batch_size)
+
     # reshape x_train to 3D tensor for LSTM
-    x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
+    x_train = tf.reshape(x_train, shape=(x_train.shape[0], x_train.shape[1], 1))
 
     # batch the test data:
     x_test, y_test = batch_data(test_data, model.batch_size)
+
     # reshape x_test to 3D tensor for LSTM
-    x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
+    x_test = tf.reshape(x_test, shape=(x_test.shape[0], x_test.shape[1], 1))
 
     # train the model:
 
     NUM_EPOCHS = 5
 
     for epoch in range(NUM_EPOCHS):
-        train(model, x_train, x_test, scaler)
+        train(model, x_train, x_test)
 
     precision, recall, accuracy, f_measure, predictions = test(model, x_test, y_test, scaler)
 
