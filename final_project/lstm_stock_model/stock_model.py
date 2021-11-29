@@ -1,9 +1,7 @@
-from abc import ABC
-
 import tensorflow as tf
 
 
-class StockModel(tf.keras.Model, ABC):
+class StockModel(tf.keras.Model):
     def __init__(self, batch_size):
         super().__init__()
         self.learning_rate = 1e-3
@@ -37,8 +35,5 @@ class StockModel(tf.keras.Model, ABC):
         :param predictions: predictions from model
         :return: loss, a Tensorflow scalar
         """
-        # loss_fn = tf.keras.losses.MeanSquaredError()
-        #
-        # return tf.math.sqrt(loss_fn(y_true, predictions))
 
         return tf.keras.metrics.mean_squared_error(y_true, predictions)

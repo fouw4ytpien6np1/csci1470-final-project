@@ -19,13 +19,11 @@ def batch_data(data, batch_size=1):
 
     overall_length = len(data)
 
-    for i in range(0, overall_length):
-        if overall_length - i < batch_size:
-            continue
+    for i in range(0, overall_length - (overall_length % batch_size)):
         x = data[i: i + batch_size]
         y = data[i + 1: i + 1 + batch_size]
 
-        if len(x) == 100 and len(y) == 100:
+        if len(y) == batch_size and len(x) == batch_size:
             dataX.append(x)
             dataY.append(y)
 
@@ -54,7 +52,7 @@ def train(model, x_train, y_train):
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
-def test(model, x_test, y_test, scaler):
+def test(model, x_test, y_test):
     """
     tests the trained model
 
@@ -75,11 +73,8 @@ def test(model, x_test, y_test, scaler):
         # make predictions from trained model:
         test_predictions = model.call(x_test[i])
 
-        test_predictions = tf.reshape(test_predictions, shape=(model.batch_size, 1))
-
         # add price prediction (as actual prices) to output list
-        correct_price_prediction = scaler.inverse_transform(test_predictions)
-        correct_predictions.append(correct_price_prediction[-1][0] / 2)
+        correct_predictions.append(test_predictions[-1][0])
 
         # calculate precision:
         precision_metric = tf.keras.metrics.Precision()
@@ -138,12 +133,9 @@ def main():
     # get our training size (65% of the data):
     training_size = int(len(fit_data) * 0.65)
 
-    # test size, which is the difference between the data and the training size:
-    test_size = len(fit_data) - training_size
-
     # get our data by train and test:
-    train_data, test_data = fit_data[0:training_size, :], fit_data[test_size:len(fit_data), :1]
-    test_data_without_scale = scaler.inverse_transform(test_data)
+    train_data = fit_data[0: training_size]
+    test_data = fit_data[training_size: len(fit_data)]
 
     # init our model:
     model = StockModel(batch_size=100)
@@ -151,24 +143,24 @@ def main():
     # batch the train data:
     x_train, y_train = batch_data(train_data, model.batch_size)
 
-    # reshape x_train to 3D tensor for LSTM
-    x_train = tf.reshape(x_train, shape=(x_train.shape[0], x_train.shape[1], 1))
-
     # batch the test data:
     x_test, y_test = batch_data(test_data, model.batch_size)
 
-    # reshape x_test to 3D tensor for LSTM
-    x_test = tf.reshape(x_test, shape=(x_test.shape[0], x_test.shape[1], 1))
+    test_data_without_scale = scaler.inverse_transform(np.array(test_data[model.batch_size: len(test_data)]).reshape(-1, 1))
+    print(test_data_without_scale.shape)
 
     # train the model:
-
-    NUM_EPOCHS = 5
+    NUM_EPOCHS = 1
 
     for epoch in range(NUM_EPOCHS):
-        train(model, x_train, y_test)
+        train(model, x_train, y_train)
         model.reset_states()
 
-    precision, recall, accuracy, f_measure, predictions = test(model, x_test, y_test, scaler)
+    precision, recall, accuracy, f_measure, predictions = test(model, x_test, y_test)
+
+    predictions = np.array(predictions.copy()).reshape(-1, 1)
+    predictions_without_scale = scaler.inverse_transform(predictions)
+    print(len(predictions_without_scale))
 
     print("###MODEL RESULTS###")
     print("-------------------")
@@ -182,7 +174,7 @@ def main():
     print("-------------------")
     print("###END OF RESULTS###")
 
-    visualize_results(test_data_without_scale, predictions)
+    visualize_results(test_data_without_scale, predictions_without_scale)
 
 
 if __name__ == '__main__':
