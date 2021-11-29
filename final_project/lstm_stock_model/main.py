@@ -4,7 +4,7 @@ from sklearn.preprocessing import MinMaxScaler
 from stock_model import StockModel
 import tensorflow as tf
 import matplotlib.pyplot as plt
-
+from random import randrange
 
 def batch_data(data, batch_size=1):
     """
@@ -69,7 +69,6 @@ def test(model, x_test, y_test):
     f_measures = []
 
     for i in range(len(x_test)):
-
         # make predictions from trained model:
         test_predictions = model.call(x_test[i])
 
@@ -102,14 +101,17 @@ def test(model, x_test, y_test):
            np.sum(accuracies) / len(accuracies), np.sum(f_measures) / len(accuracies), correct_predictions
 
 
-def visualize_results(real_stock_price, predicted_stock_price):
+def visualize_results(real_stock_price, predicted_stock_price, train_or_test, fig_num):
+    plt.figure(fig_num)
     plt.plot(real_stock_price, color='black', label='Stock Price')
     plt.plot(predicted_stock_price, color='green', label='Predicted Stock Price')
-    plt.title('Stock Price Prediction')
+    plt.title('Stock Price Prediction: ' + train_or_test)
     plt.xlabel('Time')
     plt.ylabel('Stock Price')
     plt.legend()
     plt.show()
+    rand_int = randrange(10000)
+    plt.savefig('../../data/images/fig' + str(rand_int) + '.png')
 
 
 def main():
@@ -137,17 +139,20 @@ def main():
     train_data = fit_data[0: training_size]
     test_data = fit_data[training_size: len(fit_data)]
 
+    # BEGIN MODEL
+
     # init our model:
     model = StockModel(batch_size=100)
 
     # batch the train data:
     x_train, y_train = batch_data(train_data, model.batch_size)
+    train_data_without_scale = \
+        scaler.inverse_transform(np.array(train_data[model.batch_size: len(train_data)]).reshape(-1, 1))
 
     # batch the test data:
     x_test, y_test = batch_data(test_data, model.batch_size)
-
-    test_data_without_scale = scaler.inverse_transform(np.array(test_data[model.batch_size: len(test_data)]).reshape(-1, 1))
-    print(test_data_without_scale.shape)
+    test_data_without_scale = \
+        scaler.inverse_transform(np.array(test_data[model.batch_size: len(test_data)]).reshape(-1, 1))
 
     # train the model:
     NUM_EPOCHS = 1
@@ -156,25 +161,43 @@ def main():
         train(model, x_train, y_train)
         model.reset_states()
 
+    # run model on train
+    train_precision, train_recall, train_accuracy, train_f_measure, train_predictions = test(model, x_train, y_train)
+    train_predictions_without_scale = scaler.inverse_transform(train_predictions)
+    visualize_results(train_data_without_scale, train_predictions_without_scale, "TRAIN DATA", 0)
+    print("###MODEL TRAIN RESULTS###")
+    print("-------------------")
+    print("Average TRAIN Precision: " + str(train_precision))
+    print("-------------------")
+    print("Average TRAIN Recall: " + str(train_recall))
+    print("-------------------")
+    print("Average TRAIN Accuracy: " + str(train_accuracy))
+    print("-------------------")
+    print("Average TRAIN F-Measure: " + str(train_f_measure))
+    print("-------------------")
+    print("###END OF RESULTS###")
+
+    print("--------------------")
+
+    # run model on test
     precision, recall, accuracy, f_measure, predictions = test(model, x_test, y_test)
 
     predictions = np.array(predictions.copy()).reshape(-1, 1)
     predictions_without_scale = scaler.inverse_transform(predictions)
-    print(len(predictions_without_scale))
 
-    print("###MODEL RESULTS###")
+    print("###MODEL TEST RESULTS###")
     print("-------------------")
-    print("Average Precision: " + str(precision))
+    print("Average Test Precision: " + str(precision))
     print("-------------------")
-    print("Average Recall: " + str(recall))
+    print("Average Test Recall: " + str(recall))
     print("-------------------")
-    print("Average Accuracy: " + str(accuracy))
+    print("Average Test Accuracy: " + str(accuracy))
     print("-------------------")
-    print("Average F-Measure: " + str(f_measure))
+    print("Average Test F-Measure: " + str(f_measure))
     print("-------------------")
     print("###END OF RESULTS###")
 
-    visualize_results(test_data_without_scale, predictions_without_scale)
+    visualize_results(test_data_without_scale, predictions_without_scale, "TEST DATA", 1)
 
 
 if __name__ == '__main__':
