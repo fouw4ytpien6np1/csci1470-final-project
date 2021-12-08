@@ -36,4 +36,4 @@ class StockModel(tf.keras.Model):
         :return: loss, a Tensorflow scalar
         """
 
-        return tf.reduce_sum(tf.keras.metrics.mean_squared_error(y_true, predictions))
+        return tf.reduce_sum(tf.keras.metrics.mean_absolute_error(y_true, predictions))
