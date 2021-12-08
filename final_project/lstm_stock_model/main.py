@@ -99,7 +99,7 @@ def train(model, x_train, y_train):
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
-def test(model, x_test, y_true):
+def test(model, x_test, y_true, scaler):
     """
     tests the trained model
 
@@ -115,13 +115,16 @@ def test(model, x_test, y_true):
         correct_predictions.append(test_predictions[0][-1])
 
     y_true = np.array(y_true)
-    correct_predictions = np.array(correct_predictions)
+    y_true_scaled = scaler.inverse_transform(y_true)
+    correct_predictions = np.array(correct_predictions).reshape(-1, 1)
+
+    correct_predictions_scaled = scaler.inverse_transform(correct_predictions)
 
     # Run Price Specific Measures
-    lstm_rmse = rmse(y_true, correct_predictions)
-    lstm_mape = mape(y_true, correct_predictions)
-    lstm_smape = smape_original(y_true, correct_predictions)
-    lstm_smape_adjusted = smape_adjusted(y_true, correct_predictions)
+    lstm_rmse = rmse(y_true_scaled, correct_predictions_scaled)
+    lstm_mape = mape(y_true_scaled, correct_predictions_scaled)
+    lstm_smape = smape_original(y_true_scaled, correct_predictions_scaled)
+    lstm_smape_adjusted = smape_adjusted(y_true_scaled, correct_predictions_scaled)
 
     # run Precision, Recall, Accuracy, and F-Measure on model's ability to predict
     # the next day is up or down
@@ -206,7 +209,7 @@ def run_model(data, price_point, batch_size):
 
     # run model on test
     lstm_rmse, lstm_mape, lstm_smape, lstm_smape_adjusted, precision, recall, accuracy, f_measure, predictions = \
-        test(model, x_test, y_test_single_vals)
+        test(model, x_test, y_test_single_vals, scaler)
 
     predictions = np.array(predictions).reshape(-1, 1)
     predictions_without_scale = scaler.inverse_transform(predictions)

@@ -211,28 +211,28 @@ def main():
     real_open_price = scaler.inverse_transform(spx_open_y_test)
     predicted_open = predicted_open.reshape(-1, 1)
     scaled_lstm_predicted_open = scaler.inverse_transform(predicted_open)
-    metrics(spx_open_y_test, predicted_open, "Open")
+    metrics(real_open_price, scaled_lstm_predicted_open, "Open")
     visualize_results(real_open_price, scaled_lstm_predicted_open, "TEST PREDICTIONS for Open (CNN-LSTM Model)", 0)
 
     # High:
     real_high_price = scaler.inverse_transform(spx_high_y_test)
     predicted_high = predicted_high.reshape(-1, 1)
     scaled_lstm_predicted_high = scaler.inverse_transform(predicted_high)
-    metrics(spx_high_y_test, predicted_high, "High")
+    metrics(real_high_price, scaled_lstm_predicted_high, "High")
     visualize_results(real_high_price, scaled_lstm_predicted_high, "TEST PREDICTIONS for High (CNN-LSTM Model)", 1)
 
     # Low:
     real_low_price = scaler.inverse_transform(spx_low_y_test)
     predicted_low = predicted_low.reshape(-1, 1)
     scaled_lstm_predicted_low = scaler.inverse_transform(predicted_low)
-    metrics(spx_low_y_test, predicted_low, "Low")
+    metrics(real_low_price, scaled_lstm_predicted_low, "Low")
     visualize_results(real_low_price, scaled_lstm_predicted_low, "TEST PREDICTIONS for Low (CNN-LSTM Model)", 2)
 
     # Close:
     real_close_price = scaler.inverse_transform(spx_close_y_test)
     predicted_close = predicted_close.reshape(-1, 1)
     scaled_lstm_predicted_close = scaler.inverse_transform(predicted_close)
-    metrics(spx_close_y_test, predicted_close, "Close")
+    metrics(real_close_price, scaled_lstm_predicted_close, "Close")
     visualize_results(real_close_price, scaled_lstm_predicted_close, "TEST PREDICTIONS for Close (CNN-LSTM Model)", 3)
 
     # get dates:
